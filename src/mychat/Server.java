@@ -32,8 +32,8 @@ public class Server extends javax.swing.JFrame {
     }
     ServerSocket server;
     Socket client;
-    public synchronized String getDisplay() {
-        return server_display.getText();
+    public synchronized void getDisplay(String s) {
+        server_display.setText(server_display.getText() + s);
     }
     class Listener implements Runnable {
 
@@ -44,7 +44,7 @@ public class Server extends javax.swing.JFrame {
                 int i=0;
                 while(true) {
                     client = server.accept();
-                    server_display.setText("Client " + i + "got Connected\n");
+                    getDisplay("\nClient " + i + "got Connected\n");
                     InputStream is = client.getInputStream();
                     DataInputStream din = new DataInputStream(is);
                     OutputStream os = client.getOutputStream();
@@ -75,8 +75,9 @@ public class Server extends javax.swing.JFrame {
         public void run() {
             while(true) {
                 try {
-                    String ss=getDisplay();
-                    server_display.setText(ss + "\n" + name + ": " + di.readUTF());
+                    String ss="\n" + name + ": " + di.readUTF();
+                    getDisplay(ss);
+                    //server_display.setText(ss + );
                 } catch (IOException ex) {
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                 }
