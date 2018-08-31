@@ -186,12 +186,10 @@ public class Client extends javax.swing.JFrame {
                 client_display.setText("UserName not Specified\n");
                 return;
             }
-            else {
-                client_display.setText("You are Connected ");
-                
-            }
             socket = new Socket("localhost",13000);
+            client_display.setText("You are Connected\n");
             myUserName.setEditable(false);
+            setTitle(myUserName.getText());
             System.out.println(socket);
             DataOutputStream dname = new DataOutputStream(socket.getOutputStream());
             dname.writeUTF(myUserName.getText());
@@ -254,6 +252,7 @@ public class Client extends javax.swing.JFrame {
             OutputStream os = socket.getOutputStream();
             DataOutputStream dout = new DataOutputStream(os);
             String reciever = show_online_users.getSelectedValue();
+            System.out.println(reciever);
             dout.writeUTF(reciever + "#" + msg_box.getText());
             msg_box.setText("");
         } catch (IOException ex) {

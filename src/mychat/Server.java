@@ -17,6 +17,7 @@ import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -39,10 +40,12 @@ public class Server extends javax.swing.JFrame {
     HashMap<String,ClientHandler> har = new HashMap<>();
     static Vector<String> online_userlist = new Vector<>();
     DefaultListModel model = new DefaultListModel();
+    
     public synchronized void getDisplay(String s) {
         server_display.setText(server_display.getText() + s);
     }
-    public void sendUserList() throws IOException {
+    
+    public synchronized void sendUserList() throws IOException {
         int n=har.size();
         for(HashMap.Entry<String, ClientHandler> hr : har.entrySet()) {
             DataOutputStream duser = new DataOutputStream(hr.getValue().socket.getOutputStream());
@@ -120,19 +123,21 @@ public class Server extends javax.swing.JFrame {
         public void run() {
             while(true) {
                 try {
-                    String s1=di.readUTF();
+                    String s1=di.readUTF(),msg;
+                    //JOptionPane.showMessageDialog(rootPane, s1);
                     int s1n=s1.length();
 //                    int i=0;
                     String reciever = s1.substring(0,s1.indexOf('#')) ;
-                    s1=name + s1.substring(s1.indexOf('#') + 1);
+                    msg=name + ": " + s1.substring(s1.indexOf('#') + 1);
 //                    while(s1[i]!='#') {
 //                        reciever+=s1[i];
 //                        i++;
 //                    }
-                    String ss="\n" + name + ": " + s1;
+                    String ss="\n" + name + "-> " + s1;
                     getDisplay(ss);
+                    //System.out.println(har.get(reciever).name);
                     if(har.containsKey(reciever))
-                        sendMsg(har.get(reciever).socket,s1);
+                        sendMsg(har.get(reciever).socket,"MSG@" + msg);
                     else
                         sendMsg(socket,"Reciever Not Present at the Moment\n");
                     //server_display.setText(ss + );
