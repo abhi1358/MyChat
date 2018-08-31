@@ -5,6 +5,7 @@
  */
 package mychat;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,6 +13,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.DefaultListModel;
+import javax.swing.JList;
 
 /**
  *
@@ -41,8 +44,14 @@ public class Client extends javax.swing.JFrame {
         client_connect = new javax.swing.JButton();
         client_disconnect = new javax.swing.JButton();
         send_msg = new javax.swing.JButton();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        show_online_users = new javax.swing.JList<>();
+        jLabel1 = new javax.swing.JLabel();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        myUserName = new javax.swing.JTextPane();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("CLIENT");
 
         client_display.setColumns(20);
         client_display.setRows(5);
@@ -56,6 +65,7 @@ public class Client extends javax.swing.JFrame {
         });
 
         client_disconnect.setText("Disconnect");
+        client_disconnect.setEnabled(false);
         client_disconnect.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 client_disconnectActionPerformed(evt);
@@ -69,52 +79,129 @@ public class Client extends javax.swing.JFrame {
             }
         });
 
+        jScrollPane2.setViewportView(show_online_users);
+
+        jLabel1.setFont(new java.awt.Font("Trebuchet MS", 1, 14)); // NOI18N
+        jLabel1.setText("Online Users:");
+
+        jScrollPane3.setName("username"); // NOI18N
+        jScrollPane3.setViewportView(myUserName);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(msg_box)
-                    .addComponent(jScrollPane1))
-                .addContainerGap())
             .addGroup(layout.createSequentialGroup()
-                .addGap(45, 45, 45)
-                .addComponent(client_connect)
-                .addGap(42, 42, 42)
-                .addComponent(client_disconnect)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 59, Short.MAX_VALUE)
-                .addComponent(send_msg)
-                .addGap(39, 39, 39))
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(msg_box)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 290, Short.MAX_VALUE)
+                                    .addComponent(jScrollPane3))
+                                .addGap(10, 10, 10)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                        .addContainerGap())
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(10, 10, 10)
+                        .addComponent(client_connect)
+                        .addGap(60, 60, 60)
+                        .addComponent(client_disconnect)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 66, Short.MAX_VALUE)
+                        .addComponent(send_msg)
+                        .addGap(45, 45, 45))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 173, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(msg_box, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 29, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 138, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jScrollPane1))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(msg_box, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(client_connect)
                     .addComponent(client_disconnect)
                     .addComponent(send_msg))
-                .addContainerGap(13, Short.MAX_VALUE))
+                .addGap(69, 69, 69))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
     Socket socket;
+    private volatile boolean listenerFlag=true;
+    private volatile boolean onlineUserFlag=true;
+    DefaultListModel dm = new DefaultListModel();
+    public synchronized void getDisplay(String s) {
+        client_display.setText(client_display.getText() + "\n" + s);
+    }
+    public void updateOnlineUsers(String user) {
+        
+        dm.addElement(user);
+    }
+    public class Listener implements Runnable {
+        public void run() {
+            while(listenerFlag) {
+                try {
+                    DataInputStream din = new DataInputStream(socket.getInputStream());
+                    String msg=din.readUTF();
+                    String msgType = msg.substring(0,msg.indexOf('@'));
+                    if(msgType.equals("UL")) {
+                        int numUsers =Integer.parseInt(msg.substring(msg.indexOf('@')+1,msg.length()));
+                        show_online_users.setModel(dm);
+                        dm.removeAllElements();
+                        for(int i = 0;i< numUsers;++i) {
+                            DataInputStream dusr = new DataInputStream(socket.getInputStream());
+                            String usr=dusr.readUTF();
+                            updateOnlineUsers(usr);
+                        }    
+                    }
+                    else {
+                        String recievedMsg= msg.substring(msg.indexOf('@')+1,msg.length());
+                        getDisplay(recievedMsg);
+                    }
+                } catch (IOException ex) {
+                    Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+    }
     private void client_connectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_client_connectActionPerformed
         try {
             // TODO add your handling code here:
 //            Server sv = new Server();
 //            sv.addNewClient();
+            if(myUserName.getText().equals("")) {
+                client_display.setText("UserName not Specified\n");
+                return;
+            }
+            else {
+                client_display.setText("You are Connected ");
+                
+            }
             socket = new Socket("localhost",13000);
+            myUserName.setEditable(false);
             System.out.println(socket);
-            
+            DataOutputStream dname = new DataOutputStream(socket.getOutputStream());
+            dname.writeUTF(myUserName.getText());
+            //setTitle(dname.readUTF());
+            client_connect.setEnabled(false);
+            client_disconnect.setEnabled(true);
+            Thread th = new Thread(new Listener());
+            th.start();
+//            Thread showOnlineUsers = new Thread(new ShowOnlineUsers());
+//            showOnlineUsers.start();
             //dout = new DataOutputStream(socket.getOutputStream());
             
         /*    while(true) {
@@ -128,11 +215,34 @@ public class Client extends javax.swing.JFrame {
             System.out.println("error");
         }
     }//GEN-LAST:event_client_connectActionPerformed
-
+    class ShowOnlineUsers implements Runnable {
+        //Server sv = new Server();
+        public void run() {
+            
+           while(onlineUserFlag) {
+               int n = Server.clientID;
+               //System.out.println(Server.displayUsers());
+//               DefaultListModel model = new DefaultListModel();
+//               //JList list = new JList(sv.online_users);
+//               show_online_users.setModel(model);
+               //System.out.println(n);
+//               for(int i = 0;i < n;++i) {
+//                   System.out.println(sv.online_userlist);
+//                   model.addElement(sv.online_userlist);
+//               }
+           }
+        }
+    }
     private void client_disconnectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_client_disconnectActionPerformed
         try {
             // TODO add your handling code here:
+            
+            client_connect.setEnabled(true);
+            client_disconnect.setEnabled(false);
+            myUserName.setEditable(true);
             socket.close();
+            listenerFlag=false;
+            onlineUserFlag=false;
         } catch (IOException ex) {
             Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -143,7 +253,8 @@ public class Client extends javax.swing.JFrame {
         try {
             OutputStream os = socket.getOutputStream();
             DataOutputStream dout = new DataOutputStream(os);
-            dout.writeUTF(msg_box.getText());
+            String reciever = show_online_users.getSelectedValue();
+            dout.writeUTF(reciever + "#" + msg_box.getText());
             msg_box.setText("");
         } catch (IOException ex) {
             Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
@@ -178,6 +289,7 @@ public class Client extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
+        
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 new Client().setVisible(true);
@@ -189,8 +301,13 @@ public class Client extends javax.swing.JFrame {
     private javax.swing.JButton client_connect;
     private javax.swing.JButton client_disconnect;
     private javax.swing.JTextArea client_display;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JTextField msg_box;
+    private javax.swing.JTextPane myUserName;
     private javax.swing.JButton send_msg;
+    private javax.swing.JList<String> show_online_users;
     // End of variables declaration//GEN-END:variables
 }

@@ -12,9 +12,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.DefaultListModel;
 
 /**
  *
@@ -32,51 +34,107 @@ public class Server extends javax.swing.JFrame {
     }
     ServerSocket server;
     Socket client;
+    public static int clientID;
+    Vector<ClientHandler> ar = new Vector<>();
+    HashMap<String,ClientHandler> har = new HashMap<>();
+    static Vector<String> online_userlist = new Vector<>();
+    DefaultListModel model = new DefaultListModel();
     public synchronized void getDisplay(String s) {
         server_display.setText(server_display.getText() + s);
     }
+    public void sendUserList() throws IOException {
+        int n=har.size();
+        for(HashMap.Entry<String, ClientHandler> hr : har.entrySet()) {
+            DataOutputStream duser = new DataOutputStream(hr.getValue().socket.getOutputStream());
+            duser.writeUTF("UL@" + har.size());
+            for(HashMap.Entry<String, ClientHandler> usr_list : har.entrySet()) {
+                duser.writeUTF(usr_list.getKey());
+            }
+        }
+        
+    }
+    public synchronized void addUser(String name,ClientHandler ch) throws IOException {
+        har.put(name,ch);
+        ar.add(ch);
+        online_userlist.add(name);
+        sendUserList();
+        onlineUsers.setModel(model);
+        //String userName = online_userlist[clientID];
+        model.addElement(online_userlist.get(clientID));
+        clientID++;
+        //server_display.setText(server_display.getText() + s);
+    }
+//    public synchronized void updateOnlineUsers() {
+//        DefaultListModel model = new DefaultListModel();
+//        onlineUsers.setModel(model);
+//        //String userName = online_userlist[clientID];
+//        model.addElement(online_userlist.get(clientID));
+//        //onlineUsers.add(model);
+//    }
+    public void sendMsg(Socket st,String msg) throws IOException {
+        DataOutputStream dout = new DataOutputStream(st.getOutputStream());
+        dout.writeUTF(msg);
+    }
     class Listener implements Runnable {
 
-        Vector<ClientHandler> ar = new Vector<>();
+//        Vector<ClientHandler> ar = new Vector<>();
+//        HashMap<String,ClientHandler> har = new HashMap<>();
         public void run() {
             try {
                 server = new ServerSocket(13000);
-                int i=0;
+                //int i=0;
                 while(true) {
                     client = server.accept();
-                    getDisplay("\nClient " + i + "got Connected\n");
+                    
                     InputStream is = client.getInputStream();
                     DataInputStream din = new DataInputStream(is);
                     OutputStream os = client.getOutputStream();
                     DataOutputStream dout = new DataOutputStream(os);
-                    ClientHandler ch = new ClientHandler(client,i,din,dout);
-                    ar.add(ch);
+                    String username = din.readUTF();
+                    getDisplay(username + " got Connected\n");
+                    ClientHandler ch = new ClientHandler(client,username,din,dout);
+                    addUser(username,ch);
+                    //System.out.println(online_userlist.size());
+                    //displayUsers();
+                    //updateOnlineUsers();
                     Thread th = new Thread(ch);
                     th.start();
-                    i++;
+                    //clientID++;
                 }
             } catch(Exception e) {
                 System.out.println("error");
             }
         }
     }
-
     class ClientHandler implements Runnable {
         DataOutputStream ds;
         DataInputStream di;
         Socket socket;
         String name;
-        ClientHandler(Socket socket,int i,DataInputStream di,DataOutputStream ds) {
+        ClientHandler(Socket socket,String name,DataInputStream di,DataOutputStream ds) {
             this.ds=ds;
             this.di=di;
             this.socket=socket;
-            this.name = "Client:" + i;
+            this.name =name;
         }
         public void run() {
             while(true) {
                 try {
-                    String ss="\n" + name + ": " + di.readUTF();
+                    String s1=di.readUTF();
+                    int s1n=s1.length();
+//                    int i=0;
+                    String reciever = s1.substring(0,s1.indexOf('#')) ;
+                    s1=name + s1.substring(s1.indexOf('#') + 1);
+//                    while(s1[i]!='#') {
+//                        reciever+=s1[i];
+//                        i++;
+//                    }
+                    String ss="\n" + name + ": " + s1;
                     getDisplay(ss);
+                    if(har.containsKey(reciever))
+                        sendMsg(har.get(reciever).socket,s1);
+                    else
+                        sendMsg(socket,"Reciever Not Present at the Moment\n");
                     //server_display.setText(ss + );
                 } catch (IOException ex) {
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
@@ -101,8 +159,12 @@ public class Server extends javax.swing.JFrame {
         server_display = new javax.swing.JTextArea();
         start_server = new javax.swing.JButton();
         stop_server = new javax.swing.JButton();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        onlineUsers = new javax.swing.JList<>();
+        jLabel1 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("SERVER");
 
         server_display.setColumns(20);
         server_display.setRows(5);
@@ -122,26 +184,39 @@ public class Server extends javax.swing.JFrame {
             }
         });
 
+        jScrollPane2.setViewportView(onlineUsers);
+
+        jLabel1.setFont(new java.awt.Font("Trebuchet MS", 1, 14)); // NOI18N
+        jLabel1.setText("Online Users : ");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(start_server)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(stop_server))
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 98, Short.MAX_VALUE))
                 .addContainerGap())
-            .addGroup(layout.createSequentialGroup()
-                .addGap(36, 36, 36)
-                .addComponent(start_server)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 140, Short.MAX_VALUE)
-                .addComponent(stop_server)
-                .addGap(44, 44, 44))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 224, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 224, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 187, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(start_server)
@@ -203,7 +278,10 @@ public class Server extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JList<String> onlineUsers;
     private javax.swing.JTextArea server_display;
     private javax.swing.JButton start_server;
     private javax.swing.JButton stop_server;
